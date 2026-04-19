@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工事黒板ジェネレーター｜AIおきなわ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f0f;--surface:#181818;--surface2:#202020;--border:#2c2c2c;--border2:#3a3a3a;
+  --text:#e8e2d4;--text-dim:#6a6560;--text-mid:#a09888;
+  --accent:#c8a84b;--accent-dim:#7a6830;--accent-bg:rgba(200,168,75,.08);
+  --green:#2a5c2a;--green-h:#357035;--red:#7a2a2a;
+  --board-bg:#152015;--board-frame:#4a3010;--board-frame2:#6a4818;
+  --chalk:#ede8d8;--chalk-dim:#a8a090;--chalk-faint:rgba(232,226,210,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Zen Kaku Gothic New',sans-serif;background:var(--bg);color:var(--text)}
+
+header{height:48px;background:#0a0a0a;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 18px;gap:12px;position:sticky;top:0;z-index:100}
+.logo{font-family:'Noto Serif JP',serif;font-size:13px;color:var(--chalk);letter-spacing:.08em}
+.logo em{color:var(--accent);font-style:normal}
+.hbtns{margin-left:auto;display:flex;gap:6px}
+.hbtn{background:transparent;border:1px solid var(--border2);border-radius:3px;color:var(--text-mid);
+  font-family:'Zen Kaku Gothic New',sans-serif;font-size:11px;padding:5px 11px;cursor:pointer;transition:.15s}
+.hbtn:hover{border-color:#555;color:var(--chalk)}
+.hbtn.primary{background:var(--green);border-color:var(--green);color:#cfc}
+.hbtn.primary:hover{background:var(--green-h)}
+
+.layout{display:grid;grid-template-columns:360px 1fr;height:calc(100vh - 48px)}
+
+/* ─ LEFT ─ */
+.lpanel{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--border);gap:1px;border-bottom:1px solid var(--border)}
+.tab{background:var(--surface2);border:none;color:var(--text-dim);font-family:'Zen Kaku Gothic New',sans-serif;
+  font-size:12px;font-weight:500;padding:12px;cursor:pointer;transition:.15s;letter-spacing:.05em;position:relative}
+.tab:hover{color:var(--text-mid)}
+.tab.on{background:var(--surface);color:var(--accent)}
+.tab.on::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent)}
+
+.pane{padding:16px;flex:1}
+.pane.off{display:none}
+
+.sec{margin-bottom:16px}
+.sec-ttl{font-size:9px;font-weight:700;letter-spacing:.18em;color:var(--accent-dim);
+  text-transform:uppercase;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+
+.f{margin-bottom:9px}
+.f label{display:flex;align-items:center;font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:.02em}
+.f label .mbtn{margin-left:auto;background:transparent;border:1px solid var(--border2);border-radius:3px;
+  color:var(--text-dim);font-size:10px;padding:2px 7px;cursor:pointer;transition:.15s;white-space:nowrap}
+.f label .mbtn:hover{border-color:var(--accent);color:var(--accent)}
+.f label .mbtn.on{border-color:#c04;color:#e05;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.f input,.f select,.f textarea{
+  width:100%;background:#141414;border:1px solid var(--border);border-radius:3px;
+  color:var(--text);font-family:'Zen Kaku Gothic New',sans-serif;font-size:12px;
+  padding:7px 9px;outline:none;transition:.15s}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#555}
+.f textarea{resize:vertical;min-height:54px}
+.f select option{background:#1a1a1a}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* quick buttons */
+.quick-label{font-size:9px;color:var(--text-dim);letter-spacing:.1em;margin-bottom:7px;text-transform:uppercase}
+.quick-btns{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.qbtn{background:transparent;border:1px solid var(--border2);border-radius:3px;
+  color:var(--text-mid);font-family:'Zen Kaku Gothic New',sans-serif;font-size:11px;
+  padding:5px 10px;cursor:pointer;transition:.15s;letter-spacing:.03em}
+.qbtn:hover{border-color:var(--accent-dim);color:var(--accent);background:var(--accent-bg)}
+.qbtn.used{border-color:var(--accent-dim);color:var(--accent-dim);background:var(--accent-bg)}
+
+/* custom rows */
+.crow-wrap{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.crow{display:grid;grid-template-columns:100px 1fr 26px 26px;gap:5px;align-items:center}
+.crow input{font-size:11px;padding:6px 7px}
+.crow .mic{background:transparent;border:1px solid var(--border);border-radius:3px;
+  color:var(--text-dim);font-size:11px;height:28px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center}
+.crow .mic:hover{border-color:var(--accent);color:var(--accent)}
+.crow .mic.on{border-color:#c04;color:#e05;animation:blink 1s infinite}
+.crow .del{background:transparent;border:1px solid var(--border);border-radius:3px;
+  color:var(--red);font-size:15px;height:28px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center}
+.crow .del:hover{border-color:var(--red);background:rgba(122,42,42,.2)}
+
+.add-btn{background:transparent;border:1px dashed var(--border2);border-radius:3px;
+  color:var(--text-dim);font-family:'Zen Kaku Gothic New',sans-serif;font-size:11px;
+  padding:8px;cursor:pointer;width:100%;transition:.15s;letter-spacing:.04em}
+.add-btn:hover{border-color:var(--accent-dim);color:var(--accent)}
+
+.genbtn{width:100%;background:var(--green);border:none;border-radius:4px;color:#cfc;
+  font-family:'Zen Kaku Gothic New',sans-serif;font-size:13px;font-weight:700;
+  padding:13px;cursor:pointer;letter-spacing:.1em;transition:.15s;margin-top:6px}
+.genbtn:hover{background:var(--green-h)}
+.genbtn:active{transform:scale(.98)}
+
+/* ─ RIGHT ─ */
+.rpanel{background:#141414;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:24px 20px}
+.rtoolbar{display:flex;gap:6px;margin-bottom:18px;align-self:flex-end}
+
+#bwrap{width:100%;max-width:580px}
+.bframe{background:var(--board-frame);border-radius:5px;padding:13px;
+  box-shadow:inset 0 0 0 1px var(--board-frame2),0 10px 36px rgba(0,0,0,.65);position:relative}
+.bframe::before{content:'';position:absolute;inset:5px;border:1px solid rgba(255,210,100,.08);border-radius:2px;pointer-events:none}
+.bgreen{background:var(--board-bg);border-radius:2px;padding:18px 20px 22px;position:relative;overflow:hidden;min-height:180px}
+.bgreen::before{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(255,255,255,.016) 28px,rgba(255,255,255,.016) 29px);
+  pointer-events:none}
+
+.b-header{text-align:center;margin-bottom:14px;padding-bottom:11px;position:relative}
+.b-header::after{content:'';position:absolute;bottom:0;left:8%;right:8%;height:1px;background:var(--chalk-faint)}
+.b-hlabel{font-size:9px;color:var(--chalk-dim);letter-spacing:.25em;margin-bottom:5px;font-family:'Noto Serif JP',serif}
+.b-title{font-family:'Noto Serif JP',serif;font-size:18px;font-weight:700;color:var(--chalk);
+  line-height:1.45;letter-spacing:.06em;word-break:break-all;text-shadow:0 0 10px rgba(232,226,210,.18)}
+
+.btbl{width:100%;border-collapse:collapse}
+.btbl tr{border-bottom:1px solid rgba(232,226,210,.07)}
+.btbl tr:last-child{border-bottom:none}
+.btbl td{padding:5px 4px;vertical-align:top;line-height:1.5}
+.btbl .lbl{font-size:10px;color:var(--chalk-dim);white-space:nowrap;width:84px;
+  letter-spacing:.04em;padding-right:8px;font-family:'Noto Serif JP',serif}
+.btbl .sep{color:rgba(232,226,210,.18);width:10px;text-align:center;font-size:9px}
+.btbl .val{font-size:12px;color:var(--chalk);font-weight:500;word-break:break-all}
+
+.bdiv{height:1px;background:rgba(232,226,210,.18);margin:11px 0}
+.bdiv2{border-top:1px solid rgba(232,226,210,.14);border-bottom:1px solid rgba(232,226,210,.06);height:3px;margin:11px 0}
+
+.bdesc-lbl{font-size:9px;color:var(--chalk-dim);letter-spacing:.2em;margin-bottom:5px;font-family:'Noto Serif JP',serif}
+.bdesc{font-size:12px;color:var(--chalk);font-weight:500;line-height:1.8;white-space:pre-wrap}
+
+.bfoot{margin-top:12px;display:flex;justify-content:space-between;align-items:flex-end}
+.bstamps{display:flex;gap:8px}
+.bstamp{border:1px solid rgba(232,226,210,.18);border-radius:2px;padding:4px 9px;text-align:center;min-width:58px}
+.bstamp .slbl{font-size:8px;color:var(--chalk-dim);letter-spacing:.1em;margin-bottom:10px}
+.bstamp .sline{border-top:1px solid rgba(232,226,210,.14)}
+.bstamp .sval{font-size:10px;color:var(--chalk);margin-top:3px}
+.bwm{font-size:9px;color:rgba(232,226,210,.1);letter-spacing:.1em;font-family:'Noto Serif JP',serif}
+
+.bph{text-align:center;padding:52px 20px;color:rgba(232,226,210,.16);font-size:12px;line-height:2.4}
+.bph svg{display:block;margin:0 auto 14px;opacity:.18}
+
+.copywrap{width:100%;max-width:580px;margin-top:18px}
+.copylbl{font-size:10px;color:var(--text-dim);letter-spacing:.07em;margin-bottom:5px}
+.copybox{width:100%;background:#111;border:1px solid var(--border);border-radius:3px;
+  color:#777;font-family:'Zen Kaku Gothic New',sans-serif;font-size:11px;
+  padding:10px 12px;resize:none;line-height:1.9;outline:none}
+
+.toast{position:fixed;bottom:22px;right:22px;background:#1a2a1a;border:1px solid #3a6a3a;
+  border-radius:4px;color:#8c8;font-size:12px;padding:9px 16px;opacity:0;transition:.3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+
+@media print{
+  header,.lpanel,.rtoolbar,.copywrap{display:none!important}
+  .layout{display:block}.rpanel{padding:0;background:#fff}body{background:#fff}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><em>AI</em>おきなわ｜工事黒板ジェネレーター</div>
+  <div class="hbtns">
+    <button class="hbtn" onclick="copyText()">テキストコピー</button>
+    <button class="hbtn" onclick="window.print()">印刷/PDF</button>
+    <button class="hbtn primary" onclick="generate()">黒板を生成 ▶</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- ─ LEFT ─ -->
+  <div class="lpanel">
+    <div class="tabs">
+      <button class="tab on" id="tab-d" onclick="sw('default')">デフォルト</button>
+      <button class="tab" id="tab-c" onclick="sw('custom')">カスタマイズ</button>
+    </div>
+
+    <!-- DEFAULT -->
+    <div class="pane" id="pane-d">
+      <div class="sec">
+        <div class="sec-ttl">基本情報</div>
+        <div class="f">
+          <label>工事名称 <span style="color:#c87;font-size:10px;margin-left:4px">必須</span>
+            <button class="mbtn" onclick="voice('d_km',this)">🎤</button>
+          </label>
+          <input type="text" id="d_km" placeholder="例：○○新築工事">
+        </div>
+        <div class="frow">
+          <div class="f">
+            <label>撮影日</label>
+            <input type="date" id="d_date">
+          </div>
+          <div class="f">
+            <label>天候</label>
+            <select id="d_ten">
+              <option value="">-</option>
+              <option>晴れ</option><option>曇り</option><option>雨</option>
+              <option>晴れ/曇り</option><option>曇り/雨</option>
+            </select>
+          </div>
+        </div>
+        <div class="f">
+          <label>工種 / 作業内容
+            <button class="mbtn" onclick="voice('d_ks',this)">🎤</button>
+          </label>
+          <input type="text" id="d_ks" placeholder="例：躯体工事・配筋検査">
+        </div>
+        <div class="f">
+          <label>施工者
+            <button class="mbtn" onclick="voice('d_sc',this)">🎤</button>
+          </label>
+          <input type="text" id="d_sc" placeholder="例：○○建設株式会社">
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-ttl">写真説明</div>
+        <div class="f">
+          <label>撮影対象・説明
+            <button class="mbtn" onclick="voice('d_desc',this)">🎤</button>
+          </label>
+          <textarea id="d_desc" placeholder="例：1F柱配筋検査&#10;D22@200 ダブル配筋"></textarea>
+        </div>
+        <div class="frow">
+          <div class="f">
+            <label>整理番号</label>
+            <input type="text" id="d_no" placeholder="A-001">
+          </div>
+          <div class="f">
+            <label>確認者</label>
+            <input type="text" id="d_knin" placeholder="山田 監督">
+          </div>
+        </div>
+      </div>
+      <button class="genbtn" onclick="generate()">黒板を生成する</button>
+    </div>
+
+    <!-- CUSTOM -->
+    <div class="pane off" id="pane-c">
+      <div class="sec">
+        <div class="sec-ttl">工事名称（必須）</div>
+        <div class="f">
+          <label>工事名称
+            <button class="mbtn" onclick="voice('c_km',this)">🎤</button>
+          </label>
+          <input type="text" id="c_km" placeholder="例：○○新築工事">
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-ttl">よく使う項目をボタンで追加</div>
+        <div class="quick-btns" id="qbtns">
+          <!-- JS で生成 -->
+        </div>
+        <div class="sec-ttl" style="margin-top:10px">追加された項目</div>
+        <div class="crow-wrap" id="crows"></div>
+        <button class="add-btn" onclick="addRow('','')">＋ 自由入力で追加</button>
+      </div>
+
+      <div class="sec">
+        <div class="sec-ttl">説明 / 備考</div>
+        <div class="f">
+          <label>撮影対象・説明
+            <button class="mbtn" onclick="voice('c_desc',this)">🎤</button>
+          </label>
+          <textarea id="c_desc" placeholder="自由記述（複数行OK）"></textarea>
+        </div>
+        <div class="f">
+          <label>備考
+            <button class="mbtn" onclick="voice('c_biko',this)">🎤</button>
+          </label>
+          <textarea id="c_biko" placeholder="特記事項など"></textarea>
+        </div>
+        <div class="frow">
+          <div class="f">
+            <label>整理番号</label>
+            <input type="text" id="c_no" placeholder="A-001">
+          </div>
+          <div class="f">
+            <label>確認者</label>
+            <input type="text" id="c_knin" placeholder="山田 監督">
+          </div>
+        </div>
+      </div>
+      <button class="genbtn" onclick="generate()">黒板を生成する</button>
+    </div>
+  </div>
+
+  <!-- ─ RIGHT ─ -->
+  <div class="rpanel">
+    <div class="rtoolbar">
+      <button class="hbtn" onclick="copyText()">テキストコピー</button>
+      <button class="hbtn" onclick="window.print()">印刷/PDF</button>
+    </div>
+    <div id="bwrap">
+      <div class="bframe">
+        <div class="bgreen">
+          <div id="bcontent">
+            <div class="bph">
+              <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                <rect x="5" y="7" width="34" height="26" rx="2" stroke="#ede8d8" stroke-width="1.8"/>
+                <line x1="5" y1="15" x2="39" y2="15" stroke="#ede8d8" stroke-width="1.2"/>
+                <line x1="13" y1="22" x2="31" y2="22" stroke="#ede8d8" stroke-width=".9"/>
+                <line x1="13" y1="27" x2="27" y2="27" stroke="#ede8d8" stroke-width=".9"/>
+                <line x1="19" y1="35" x2="25" y2="35" stroke="#ede8d8" stroke-width="1.8"/>
+                <line x1="22" y1="33" x2="22" y2="38" stroke="#ede8d8" stroke-width="1.8"/>
+              </svg>
+              フォームを入力して<br>「黒板を生成する」を押してください
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="copywrap" id="copywrap" style="display:none">
+      <div class="copylbl">コピー用テキスト（LINE・メール用）</div>
+      <textarea class="copybox" id="copybox" rows="11" readonly></textarea>
+      <div style="margin-top:6px">
+        <button class="hbtn" onclick="copyText()">クリップボードにコピー</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── QUICK ITEMS (よく使う項目) ──
+const QUICK = [
+  {lbl:'工事場所',   ph:'例：那覇市○○1-2-3'},
+  {lbl:'工    期',   ph:'例：R7.4.1 〜 R7.9.30'},
+  {lbl:'発 注 者',   ph:'例：株式会社○○'},
+  {lbl:'施工（元請）', ph:'例：○○建設'},
+  {lbl:'施工（下請）', ph:'例：○○工務店'},
+  {lbl:'現場代理人', ph:'例：山田 太郎'},
+  {lbl:'主任技術者', ph:'例：鈴木 一郎'},
+  {lbl:'工    種',   ph:'例：鉄筋コンクリート造'},
+  {lbl:'工    程',   ph:'例：躯体 3F'},
+  {lbl:'出 来 高',   ph:'例：65%'},
+  {lbl:'天    候',   ph:'例：晴れ'},
+  {lbl:'気    温',   ph:'例：28℃'},
+];
+
+// ── STATE ──
+let mode = 'default';
+let rows = [];   // {lbl, val, id}
+let rid = 0;
+let recog = null;
+let recogBtn = null;
+
+// ── INIT ──
+document.getElementById('d_date').value = new Date().toISOString().split('T')[0];
+renderQbtns();
+
+// ── MODE SWITCH ──
+function sw(m){
+  mode = m;
+  document.getElementById('tab-d').classList.toggle('on', m==='default');
+  document.getElementById('tab-c').classList.toggle('on', m==='custom');
+  document.getElementById('pane-d').classList.toggle('off', m!=='default');
+  document.getElementById('pane-c').classList.toggle('off', m!=='custom');
+}
+
+// ── QUICK BUTTONS ──
+function renderQbtns(){
+  const wrap = document.getElementById('qbtns');
+  wrap.innerHTML = '';
+  QUICK.forEach(q => {
+    const used = rows.some(r => r.lbl === q.lbl);
+    const btn = document.createElement('button');
+    btn.className = 'qbtn' + (used ? ' used' : '');
+    btn.textContent = q.lbl.replace(/\s/g,'');
+    btn.onclick = () => {
+      if(used){ toast('すでに追加されています'); return; }
+      addRow(q.lbl, '', q.ph);
+      btn.classList.add('used');
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+// ── ADD ROW ──
+function addRow(lbl, val, ph){
+  const id = ++rid;
+  rows.push({lbl, val, ph: ph||'', id});
+  renderRows();
+  renderQbtns();
+  // focus value input of new row
+  setTimeout(()=>{
+    const el = document.getElementById('cv_'+id);
+    if(el) el.focus();
+  }, 30);
+}
+
+function removeRow(id){
+  rows = rows.filter(r => r.id !== id);
+  renderRows();
+  renderQbtns();
+}
+
+function renderRows(){
+  const wrap = document.getElementById('crows');
+  wrap.innerHTML = '';
+  rows.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'crow';
+    div.innerHTML = `
+      <input type="text" placeholder="ラベル" value="${esc(r.lbl)}"
+        oninput="updRow(${r.id},'lbl',this.value)">
+      <input type="text" id="cv_${r.id}" placeholder="${esc(r.ph||'内容')}" value="${esc(r.val)}"
+        oninput="updRow(${r.id},'val',this.value)">
+      <button class="mic" id="mic_${r.id}" onclick="voiceRow(${r.id},this)" title="音声入力">🎤</button>
+      <button class="del" onclick="removeRow(${r.id})">×</button>
+    `;
+    wrap.appendChild(div);
+  });
+}
+
+function updRow(id, key, val){
+  const r = rows.find(r=>r.id===id);
+  if(r) r[key] = val;
+  if(key==='lbl') renderQbtns();
+}
+
+// ── VOICE ──
+function voice(targetId, btn){
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ toast('Chrome推奨：音声入力非対応のブラウザです','w'); return }
+  if(recog){ recog.stop(); return }
+  recog = new SR();
+  recog.lang='ja-JP'; recog.continuous=false; recog.interimResults=false;
+  recogBtn = btn;
+  btn.textContent='●録音中'; btn.classList.add('on');
+  recog.start();
+  recog.onresult = e => {
+    const t = e.results[0][0].transcript;
+    const el = document.getElementById(targetId);
+    if(el){ el.value = el.tagName==='TEXTAREA'?(el.value?(el.value+'\n'+t):t):t; el.dispatchEvent(new Event('input')); }
+  };
+  recog.onend = () => { btn.textContent='🎤'; btn.classList.remove('on'); recog=null; recogBtn=null; };
+  recog.onerror = () => { btn.textContent='🎤'; btn.classList.remove('on'); recog=null; recogBtn=null; };
+}
+
+function voiceRow(id, btn){
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ toast('Chrome推奨','w'); return }
+  if(recog){ recog.stop(); return }
+  recog = new SR();
+  recog.lang='ja-JP'; recog.continuous=false; recog.interimResults=false;
+  recogBtn = btn;
+  btn.textContent='●'; btn.classList.add('on');
+  recog.start();
+  recog.onresult = e => {
+    const t = e.results[0][0].transcript;
+    updRow(id,'val',t);
+    const el = document.getElementById('cv_'+id);
+    if(el) el.value = t;
+  };
+  recog.onend = () => { btn.textContent='🎤'; btn.classList.remove('on'); recog=null; recogBtn=null; };
+  recog.onerror = () => { btn.textContent='🎤'; btn.classList.remove('on'); recog=null; recogBtn=null; };
+}
+
+// ── GENERATE ──
+function v(id){ const el=document.getElementById(id); return el?el.value.trim():'' }
+function fmtDate(s){
+  if(!s) return '';
+  const d=new Date(s);
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+}
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function generate(){
+  if(mode==='default') genDefault(); else genCustom();
+}
+
+function genDefault(){
+  const km = v('d_km');
+  if(!km){ toast('工事名称を入力してください','w'); return }
+  const tableRows = [
+    {lbl:'撮 影 日', val: (fmtDate(v('d_date'))||'') + (v('d_ten')?' 　'+v('d_ten'):'')},
+    {lbl:'工    種', val: v('d_ks')},
+    {lbl:'施 工 者', val: v('d_sc')},
+  ].filter(r=>r.val);
+  renderBoard(km, tableRows, v('d_desc'), '', v('d_no'), v('d_knin'), '');
+  buildCopy(km, tableRows, v('d_desc'), '', v('d_no'), v('d_knin'), '');
+}
+
+function genCustom(){
+  const km = v('c_km');
+  if(!km){ toast('工事名称を入力してください','w'); return }
+  const tableRows = rows.filter(r=>r.val).map(r=>({lbl:r.lbl||'　', val:r.val}));
+  renderBoard(km, tableRows, v('c_desc'), v('c_biko'), v('c_no'), v('c_knin'), '');
+  buildCopy(km, tableRows, v('c_desc'), v('c_biko'), v('c_no'), v('c_knin'), '');
+}
+
+function renderBoard(km, trows, desc, biko, no, knin){
+  let h = `<div class="b-header">
+    <div class="b-hlabel">工　事　写　真　黒　板</div>
+    <div class="b-title">${esc(km)}</div>
+  </div>`;
+
+  if(trows.length){
+    h += `<table class="btbl">`;
+    trows.forEach(r=>{
+      h+=`<tr><td class="lbl">${esc(r.lbl)}</td><td class="sep">｜</td><td class="val">${esc(r.val)}</td></tr>`;
+    });
+    h += `</table>`;
+  }
+
+  if(desc){
+    h+=`<div class="bdiv2"></div>`;
+    h+=`<div class="bdesc-lbl">撮 影 対 象 ・ 説 明</div>`;
+    h+=`<div class="bdesc">${esc(desc)}</div>`;
+  }
+
+  const hasF = biko||no||knin;
+  if(hasF){
+    h+=`<div class="bdiv"></div>`;
+    if(biko) h+=`<div style="font-size:10px;color:var(--chalk-dim);line-height:1.7;white-space:pre-wrap;margin-bottom:8px">備考：${esc(biko)}</div>`;
+    h+=`<div class="bfoot">`;
+    h+=`<div class="bstamps">`;
+    if(no)   h+=`<div class="bstamp"><div class="slbl">整理番号</div><div class="sval">${esc(no)}</div><div class="sline"></div></div>`;
+    if(knin) h+=`<div class="bstamp"><div class="slbl">確 認 者</div><div class="sval">${esc(knin)}</div><div class="sline"></div></div>`;
+    h+=`</div><div class="bwm">AIおきなわ</div></div>`;
+  } else {
+    h+=`<div style="margin-top:10px;text-align:right"><span class="bwm">AIおきなわ</span></div>`;
+  }
+
+  document.getElementById('bcontent').innerHTML = h;
+}
+
+function buildCopy(km, trows, desc, biko, no, knin){
+  let t='━━━━━━━━━━━━━━━━━\n　工事写真黒板\n━━━━━━━━━━━━━━━━━\n';
+  t+=`【工事名称】${km}\n`;
+  trows.forEach(r=>{ t+=`【${r.lbl.replace(/\s/g,'')}】${r.val}\n`; });
+  if(desc) t+=`【撮影対象・説明】\n${desc}\n`;
+  if(biko) t+=`【備考】${biko}\n`;
+  if(no)   t+=`【整理番号】${no}\n`;
+  if(knin) t+=`【確認者】${knin}\n`;
+  t+='━━━━━━━━━━━━━━━━━\nAIおきなわ｜工事黒板ジェネレーター\n';
+  document.getElementById('copybox').value = t;
+  document.getElementById('copywrap').style.display = 'block';
+}
+
+function copyText(){
+  const ta = document.getElementById('copybox');
+  if(!ta.value){ toast('先に黒板を生成してください','w'); return }
+  ta.select(); document.execCommand('copy');
+  toast('コピーしました');
+}
+
+function toast(msg, type){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type==='w'?'#2a1a1a':'#1a2a1a';
+  el.style.borderColor = type==='w'?'#6a3a3a':'#3a6a3a';
+  el.style.color = type==='w'?'#c88':'#8c8';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2000);
+}
+</script>
+</body>
+</html>
